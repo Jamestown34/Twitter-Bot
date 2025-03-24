@@ -1,36 +1,53 @@
 name: Twitter Bot Automation
-
 on:
-  push:
-    branches:
-      - main  # Runs when changes are pushed to main
+  workflow_dispatch: # Allows manual run
   schedule:
-    - cron: '0 * * * *'  # Runs every hour (change if needed)
-  workflow_dispatch:  # Allows manual run from GitHub Actions
+    - cron: '0 * * * *' # Runs every hour
 
 jobs:
-  run-twitter-bot:
+  post_tweet:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run Twitter Bot
+          python-version: '3.9'
+      - run: pip install tweepy google-generativeai
+      - name: Post Tweet
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
           TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
           TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          BOT_FUNCTION: post_tweet
         run: python twitter_bot.py
+
+  like_tweets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install tweepy
+      - name: Like Tweets
+        env:
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+          BOT_FUNCTION: like_tweets
+        run: python twitter_bot.py
+
+  retweet_tweets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install tweepy
+      - name: Retweet Tweets
+        env:
+          TWITTER_API_KEY: ${{ secrets.TWITTER_
