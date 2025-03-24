@@ -12,7 +12,8 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      - run: pip install tweepy google-generativeai
+      - name: Install dependencies
+        run: pip install -r requirements.txt
       - name: Post Tweet
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
@@ -30,7 +31,8 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      - run: pip install tweepy
+      - name: Install dependencies
+        run: pip install -r requirements.txt
       - name: Like Tweets
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
@@ -47,7 +49,32 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      - run: pip install tweepy
+      - name: Install dependencies
+        run: pip install -r requirements.txt
       - name: Retweet Tweets
         env:
-          TWITTER_API_KEY: ${{ secrets.TWITTER_
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+          BOT_FUNCTION: retweet_tweets
+        run: python twitter_bot.py
+
+  reply_to_tweets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Reply to Tweets
+        env:
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          BOT_FUNCTION: reply_to_tweets
+        run: python twitter_bot.py
