@@ -1,99 +1,154 @@
 import os
 import tweepy
 import google.generativeai as genai
-import schedule
-import time
 import random
-from dotenv import load_dotenv
+import logging
+import time
 
-# Load API keys from .env
-load_dotenv()
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-TWITTER_API_KEY = os.getenv("TWITTER_API_KEY")
-TWITTER_API_SECRET = os.getenv("TWITTER_API_SECRET")
-TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
-TWITTER_ACCESS_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+def setup_twitter_api():
+    """Sets up and returns the Tweepy API client."""
+    try:
+        auth = tweepy.OAuth1UserHandler(
+            os.environ['TWITTER_API_KEY'],
+            os.environ['TWITTER_API_SECRET'],
+            os.environ['TWITTER_ACCESS_TOKEN'],
+            os.environ['TWITTER_ACCESS_SECRET']
+        )
+        return tweepy.API(auth)
+    except KeyError as e:
+        logging.error(f"Missing environment variable: {e}")
+        return None
+    except tweepy.TweepyException as e:
+        logging.error(f"Twitter API authentication failed: {e}")
+        return None
 
-# Authenticate Twitter API
-auth = tweepy.OAuth1UserHandler(
-    TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET
-)
-api = tweepy.API(auth)
+def setup_gemini_api():
+    """Configures and returns the Gemini AI model."""
+    try:
+        genai.configure(api_key=os.environ['GEMINI_API_KEY'])
+        return genai.GenerativeModel("gemini-pro")
+    except KeyError as e:
+        logging.error(f"Missing Gemini API key: {e}")
+        return None
+    except Exception as e:
+        logging.error(f"Gemini API configuration failed: {e}")
+        return None
 
-# Authenticate Gemini AI
-genai.configure(api_key=GEMINI_API_KEY)
+def generate_tweet(model):
+    """Generates a tweet using Gemini AI."""
+    if not model:
+        return None
 
-# Function to generate a tweet using Gemini AI
-def generate_tweet():
-    topics = [
-        "Data Science", "AI/ML", "Prompt Engineering",
-        "Funnel Engineering", "Data Analytics"
-    ]
+    topics = ["Data Science", "AI/ML", "Prompt Engineering", "Funnel Engineering", "Data Analytics"]
     prompt = f"""
-    Write a Twitter post about {random.choice(topics)}. 
-    Avoid phrases like 'As an AI' or '--'. 
+    Write a Twitter post about {random.choice(topics)}.
+    Avoid phrases like 'As an AI' or '--'.
     Write in an engaging and human-like way, as if an expert is sharing their thoughts.
     Keep it short and impactful.
     """
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(prompt)
-    return response.text.strip()
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        logging.error(f"Gemini API tweet generation failed: {e}")
+        return None
 
-# Function to post a tweet
-def post_tweet():
-    tweet = generate_tweet()
-    api.update_status(tweet)
-    print(f"Tweeted: {tweet}")
+def post_tweet(api, model):
+    """Posts a tweet to Twitter."""
+    if not api:
+        return
+    tweet = generate_tweet(model)
+    if tweet:
+        try:
+            api.update_status(tweet)
+            logging.info(f"Tweeted: {tweet}")
+        except tweepy.TweepyException as e:
+            logging.error(f"Twitter API tweet posting failed: {e}")
 
-# Function to like tweets with relevant hashtags
-def like_tweets():
+def like_tweets(api):
+    """Likes tweets with relevant hashtags."""
+    if not api:
+        return
     hashtags = ["#DataScience", "#MachineLearning", "#AI", "#Analytics", "#FunnelEngineering"]
     for hashtag in hashtags:
-        for tweet in tweepy.Cursor(api.search_tweets, q=hashtag, lang="en").items(5):
-            try:
-                tweet.favorite()
-                print(f"Liked: {tweet.text}")
-            except Exception as e:
-                print(f"Error liking tweet: {e}")
+        try:
+            for tweet in tweepy.Cursor(api.search_tweets, q=hashtag, lang="en").items(5):
+                try:
+                    api.create_favorite(tweet.id)
+                    logging.info(f"Liked: {tweet.text}")
+                    time.sleep(5) #Adding a delay to avoid rate limits.
+                except tweepy.TweepyException as e:
+                    logging.error(f"Error liking tweet: {e}")
+        except tweepy.TweepyException as e:
+            logging.error(f"Error searching for tweets: {e}")
 
-# Function to retweet relevant posts
-def retweet_tweets():
+def retweet_tweets(api):
+    """Retweets relevant posts."""
+    if not api:
+        return
     hashtags = ["#DataScience", "#MachineLearning", "#AI", "#Analytics", "#FunnelEngineering"]
     for hashtag in hashtags:
-        for tweet in tweepy.Cursor(api.search_tweets, q=hashtag, lang="en").items(2):
-            try:
-                tweet.retweet()
-                print(f"Retweeted: {tweet.text}")
-            except Exception as e:
-                print(f"Error retweeting: {e}")
+        try:
+            for tweet in tweepy.Cursor(api.search_tweets, q=hashtag, lang="en").items(2):
+                try:
+                    api.retweet(tweet.id)
+                    logging.info(f"Retweeted: {tweet.text}")
+                    time.sleep(5) #Adding a delay to avoid rate limits.
+                except tweepy.TweepyException as e:
+                    logging.error(f"Error retweeting: {e}")
+        except tweepy.TweepyException as e:
+            logging.error(f"Error searching for tweets: {e}")
 
-# Function to reply to tweets with human-like responses
-def reply_to_tweets():
+def reply_to_tweets(api, model):
+    """Replies to tweets with human-like responses."""
+    if not api or not model:
+        return
     hashtags = ["#DataScience", "#AI", "#ML", "#Analytics"]
     for hashtag in hashtags:
-        for tweet in tweepy.Cursor(api.search_tweets, q=hashtag, lang="en").items(2):
-            try:
-                user = tweet.user.screen_name
-                prompt = f"""
-                Write a natural, engaging, and insightful reply to this tweet: 
-                '{tweet.text}'
-                Do not say 'As an AI' or use '--'. Keep it short and conversational.
-                """
-                response = genai.GenerativeModel("gemini-pro").generate_content(prompt).text.strip()
-                api.update_status(f"@{user} {response}", in_reply_to_status_id=tweet.id)
-                print(f"Replied to @{user}: {response}")
-            except Exception as e:
-                print(f"Error replying: {e}")
+        try:
+            for tweet in tweepy.Cursor(api.search_tweets, q=hashtag, lang="en").items(2):
+                try:
+                    user = tweet.user.screen_name
+                    prompt = f"""
+                    Write a natural, engaging, and insightful reply to this tweet:
+                    '{tweet.text}'
+                    Do not say 'As an AI' or use '--'. Keep it short and conversational.
+                    """
+                    response = model.generate_content(prompt).text.strip()
+                    api.update_status(f"@{user} {response}", in_reply_to_status_id=tweet.id)
+                    logging.info(f"Replied to @{user}: {response}")
+                    time.sleep(5) #Adding a delay to avoid rate limits.
+                except tweepy.TweepyException as e:
+                    logging.error(f"Error replying: {e}")
+                except Exception as e:
+                    logging.error(f"Gemini API reply failed: {e}")
+        except tweepy.TweepyException as e:
+            logging.error(f"Error searching for tweets: {e}")
 
-# Schedule tasks
-schedule.every().day.at("09:00").do(post_tweet)
-schedule.every().hour.do(like_tweets)
-schedule.every().day.at("12:00").do(retweet_tweets)
-schedule.every().day.at("18:00").do(reply_to_tweets)
+# GitHub Actions entry point
+def main():
+    """Main function to run the Twitter bot."""
+    api = setup_twitter_api()
+    model = setup_gemini_api()
 
-# Run bot continuously
-while True:
-    schedule.run_pending()
-    time.sleep(60)
+    if api and model:
+        function_to_run = os.environ.get('BOT_FUNCTION') #gets the function name from the github action env.
 
+        if function_to_run == 'post_tweet':
+            post_tweet(api, model)
+        elif function_to_run == 'like_tweets':
+            like_tweets(api)
+        elif function_to_run == 'retweet_tweets':
+            retweet_tweets(api)
+        elif function_to_run == 'reply_to_tweets':
+            reply_to_tweets(api, model)
+        else:
+            logging.error("Invalid BOT_FUNCTION environment variable.")
+    else:
+        logging.error("API setup failed. Bot will not run.")
+
+if __name__ == "__main__":
+    main()
