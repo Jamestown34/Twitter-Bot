@@ -1,29 +1,31 @@
 import os
-import tweepy
-import google.generativeai as genai
-import random
+import json
 import logging
+import random
+import google.generativeai as genai
+from requests_oauthlib import OAuth1Session
 import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def setup_twitter_api():
-    """Sets up and returns the Twitter API client."""
-    try:
-        client = tweepy.Client(
-            consumer_key=os.environ['TWITTER_API_KEY'],
-            consumer_secret=os.environ['TWITTER_API_SECRET'],
-            access_token=os.environ['TWITTER_ACCESS_TOKEN'],
-            access_token_secret=os.environ['TWITTER_ACCESS_SECRET']
-        )
-        return client
-    except KeyError as e:
-        logging.error(f"Missing Twitter API keys: {e}")
+def setup_twitter_oauth():
+    """Sets up and returns the Twitter OAuth 1.0a session."""
+    consumer_key = os.environ.get("TWITTER_API_KEY")
+    consumer_secret = os.environ.get("TWITTER_API_SECRET")
+    access_token = os.environ.get("TWITTER_ACCESS_TOKEN")
+    access_token_secret = os.environ.get("TWITTER_ACCESS_SECRET")
+
+    if not all([consumer_key, consumer_secret, access_token, access_token_secret]):
+        logging.error("Missing Twitter API credentials.")
         return None
-    except Exception as e:
-        logging.error(f"Twitter API setup failed: {e}")
-        return None
+
+    return OAuth1Session(
+        consumer_key,
+        client_secret=consumer_secret,
+        resource_owner_key=access_token,
+        resource_owner_secret=access_token_secret,
+    )
 
 def setup_gemini_api():
     """Configures and returns the Gemini AI model."""
@@ -68,25 +70,31 @@ def generate_tweet(gemini_model):
         logging.error(f"Gemini API tweet generation failed: {e}")
         return None
 
-def post_tweet(twitter_client, tweet_text):
-    """Posts a tweet to Twitter."""
-    if not twitter_client or not tweet_text:
+def post_tweet(oauth, tweet_text):
+    """Posts a tweet to Twitter using OAuth 1.0a."""
+    if not oauth or not tweet_text:
         return
 
+    payload = {"text": tweet_text}
+
     try:
-        twitter_client.create_tweet(text=tweet_text)
+        response = oauth.post("https://api.twitter.com/2/tweets", json=payload)
+
+        if response.status_code != 201:
+            logging.error(f"Twitter API error: {response.status_code} {response.text}")
+            return
         logging.info(f"Tweet posted: {tweet_text}")
-    except tweepy.errors.TweepyException as e:
+    except Exception as e:
         logging.error(f"Twitter API error: {e}")
 
 def main():
-    twitter_client = setup_twitter_api()
+    oauth = setup_twitter_oauth()
     gemini_model = setup_gemini_api()
 
-    if twitter_client and gemini_model:
+    if oauth and gemini_model:
         tweet_text = generate_tweet(gemini_model)
         if tweet_text:
-            post_tweet(twitter_client, tweet_text)
+            post_tweet(oauth, tweet_text)
         else:
             logging.error("Failed to generate tweet.")
     else:
