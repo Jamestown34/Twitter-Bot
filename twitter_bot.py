@@ -29,8 +29,7 @@ def setup_gemini_api():
     """Configures and returns the Gemini AI model."""
     try:
         genai.configure(api_key=os.environ['GEMINI_API_KEY'])
-        # Use gemini-1.5-pro-latest, since gemini-pro was not found.
-        model = genai.GenerativeModel('gemini-1.5-pro-latest')
+        model = genai.GenerativeModel('models/gemini-1.5-pro-latest')
 
         #Debugging. List models.
         for listed_model in genai.list_models():
