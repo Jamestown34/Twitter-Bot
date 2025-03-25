@@ -5,6 +5,7 @@ import random
 import google.generativeai as genai
 from requests_oauthlib import OAuth1Session
 import time
+import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -92,11 +93,17 @@ def main():
     gemini_model = setup_gemini_api()
 
     if oauth and gemini_model:
-        tweet_text = generate_tweet(gemini_model)
-        if tweet_text:
-            post_tweet(oauth, tweet_text)
-        else:
-            logging.error("Failed to generate tweet.")
+        for _ in range(6):  # Post 6 times a day
+            tweet_text = generate_tweet(gemini_model)
+            if tweet_text:
+                post_tweet(oauth, tweet_text)
+            else:
+                logging.error("Failed to generate tweet.")
+
+            # Calculate random delay (up to 4 hours)
+            delay_seconds = random.randint(0, 4 * 3600)  # 4 hours in seconds
+            logging.info(f"Waiting for {delay_seconds} seconds before next post. Delay: {delay_seconds} seconds")
+            time.sleep(delay_seconds)
     else:
         logging.error("Twitter or Gemini API setup failed.")
 
