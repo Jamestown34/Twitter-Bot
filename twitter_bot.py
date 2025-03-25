@@ -21,13 +21,18 @@ def setup_twitter_api():
     except KeyError as e:
         logging.error(f"Missing Twitter API keys: {e}")
         return None
+    except Exception as e:
+        logging.error(f"Twitter API setup failed: {e}")
+        return None
 
 def setup_gemini_api():
     """Configures and returns the Gemini AI model."""
     try:
         genai.configure(api_key=os.environ['GEMINI_API_KEY'])
-        model = genai.GenerativeModel('gemini-pro') # Make sure this is a listed model.
-        #List models for debugging
+        # Use gemini-1.5-pro-latest, since gemini-pro was not found.
+        model = genai.GenerativeModel('gemini-1.5-pro-latest')
+
+        #Debugging. List models.
         for listed_model in genai.list_models():
             logging.info(f"Available Gemini model: {listed_model}")
 
@@ -40,13 +45,25 @@ def setup_gemini_api():
         return None
 
 def generate_tweet(gemini_model):
-    """Generates a tweet using Gemini AI."""
+    """Generates a tweet using Gemini AI, with niche randomization."""
     if not gemini_model:
         return None
 
+    niche_topics = [
+        "datascience",
+        "data analytics",
+        "AI/ML",
+        "funnel engineering",
+        "prompt engineering"
+    ]
+
+    selected_topic = random.choice(niche_topics)
+    prompt = f"Write a short, engaging tweet about {selected_topic}, like a human without any (---) characters."
+
     try:
-        response = gemini_model.generate_content("Write a short, engaging tweet.")
+        response = gemini_model.generate_content(prompt)
         tweet_text = response.text
+        logging.info(f"Generated tweet: {tweet_text}") #verification logging
         return tweet_text
     except Exception as e:
         logging.error(f"Gemini API tweet generation failed: {e}")
