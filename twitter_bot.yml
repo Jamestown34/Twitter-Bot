@@ -1,7 +1,7 @@
 name: Twitter Bot Automation
 on:
   schedule:
-    - cron: '*/15 * * * *' # Run every 15 minutes. adjust as needed.
+    - cron: '0 */6 * * *'  # Runs every 6 hours
 
 jobs:
   post_tweets:
