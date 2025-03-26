@@ -19,7 +19,7 @@ def setup_google_sheets():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name("google_sheets_key.json", scope)
     client = gspread.authorize(creds)
-    sheet = client.open_by_key("1l6N6oZjRM7NPE3fRgBR2IFcD0oXxEQ7oBEdd5KCsKi4").sheet1
+    sheet = client.open_by_key("1l6N6oZjRM7NPE3fRgBR2IFcD0oXxEQ7oBEdd5KCsKi4").worksheet("History") # Corrected sheet name
     return sheet
 
 def check_existing_tweet(sheet, tweet_text):
@@ -27,7 +27,15 @@ def check_existing_tweet(sheet, tweet_text):
     return tweet_text in existing_tweets
 
 def save_tweet(sheet, tweet_text):
-    sheet.append_row([tweet_text, str(datetime.datetime.now())])
+    logging.info(f"Attempting to save tweet: {tweet_text}")
+    if sheet is not None:
+        try:
+            sheet.append_row([tweet_text, str(datetime.datetime.now())])
+            logging.info("Tweet saved to sheet.")
+        except Exception as e:
+            logging.error(f"Error saving tweet to sheet: {e}")
+    else:
+        logging.error("Google sheet object is none, unable to save tweet.")
 
 # Twitter Setup
 def setup_twitter_oauth():
@@ -161,7 +169,7 @@ def main():
                 if not is_semantically_similar(tweet_text, existing_tweets):
                     post_tweet(oauth, tweet_text)
                     save_tweet(sheet, tweet_text)
-                    time.sleep(15) #sleep for 15 seconds to help with rate limiting.
+                    time.sleep(15)
                 else:
                     logging.info("Semantically similar tweet already exists, generating a new one.")
             else:
