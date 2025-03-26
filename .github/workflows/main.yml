@@ -1,20 +1,29 @@
 name: Twitter Bot Automation
 on:
-  workflow_dispatch: # Allows manual run
   schedule:
-    - cron: '0 * * * *' # Runs every hour
+    - cron: '0 */6 * * *'  # Runs every 6 hours
 
 jobs:
-  post_tweet:
+  post_tweets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.9'
+
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Post Tweet
+
+      - name: Create Google Sheets Credentials File
+        env:
+          GOOGLE_SHEETS_KEY: ${{ secrets.GOOGLE_SHEETS_KEY }}
+        run: echo "$GOOGLE_SHEETS_KEY" > google_sheets_key.json
+
+      - name: Post Scheduled Tweets
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
