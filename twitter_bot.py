@@ -13,40 +13,21 @@ import datetime
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Google Sheets Setup
-SHEET_NAME = "TweetHistory"
-
 def setup_google_sheets():
-    """Sets up Google Sheets API authentication."""
-    try:
-        creds = ServiceAccountCredentials.from_json_keyfile_name("google_sheets_key.json", [
-            "https://spreadsheets.google.com/feeds",
-            "https://www.googleapis.com/auth/drive"
-        ])
-        client = gspread.authorize(creds)
-        sheet = client.open(SHEET_NAME).sheet1
-        return sheet
-    except Exception as e:
-        logging.error(f"Google Sheets setup failed: {e}")
-        return None
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name("google_sheets_key.json", scope)
+    client = gspread.authorize(creds)
+    sheet = client.open_by_key("1l6N6oZjRM7NPE3fRgBR2IFcD0oXxEQ7oBEdd5KCsKi4").sheet1
+    return sheet
 
-def tweet_exists(sheet, tweet_text):
-    """Checks if a tweet already exists in Google Sheets."""
-    try:
-        tweets = sheet.col_values(1)  # Assuming tweets are stored in the first column
-        return tweet_text in tweets
-    except Exception as e:
-        logging.error(f"Error checking tweet existence: {e}")
-        return False
+def check_existing_tweet(sheet, tweet_text):
+    existing_tweets = sheet.col_values(1)  # Fetch all existing tweets from the first column
+    return tweet_text in existing_tweets
 
 def save_tweet(sheet, tweet_text):
-    """Saves a new tweet to Google Sheets."""
-    try:
-        sheet.append_row([tweet_text, str(datetime.datetime.now())])
-        logging.info("Tweet saved to Google Sheets.")
-    except Exception as e:
-        logging.error(f"Failed to save tweet: {e}")
+    sheet.append_row([tweet_text, str(datetime.datetime.now())])
 
-# Twitter API Setup
+# Twitter Setup
 def setup_twitter_oauth():
     consumer_key = os.environ.get("TWITTER_API_KEY")
     consumer_secret = os.environ.get("TWITTER_API_SECRET")
@@ -109,12 +90,8 @@ def generate_tweet(gemini_model, topic):
         logging.error(f"Gemini API tweet generation failed: {e}")
         return None
 
-def post_tweet(oauth, sheet, tweet_text):
+def post_tweet(oauth, tweet_text):
     if not oauth or not tweet_text:
-        return
-    
-    if tweet_exists(sheet, tweet_text):
-        logging.info("Tweet already posted, skipping.")
         return
     
     payload = {"text": tweet_text}
@@ -125,9 +102,7 @@ def post_tweet(oauth, sheet, tweet_text):
         if response.status_code != 201:
             logging.error(f"Twitter API error: {response.status_code} {response.text}")
             return
-        
         logging.info(f"Tweet posted: {tweet_text}")
-        save_tweet(sheet, tweet_text)
     except Exception as e:
         logging.error(f"Twitter API error: {e}")
 
@@ -146,7 +121,7 @@ def main():
             "Cloud Computing for AI",
             "Data Security and Privacy",
             "Real-world Applications of AI",
-            "Prompt Engineering",
+            "prompt Engineering",
             "Feature Engineering in ML",
             "Python Libraries for Data Science"
         ]
@@ -158,17 +133,22 @@ def main():
             scheduled_time = now + (time_interval * i)
             time_to_wait = (scheduled_time - datetime.datetime.now()).total_seconds()
             if time_to_wait > 0:
-                logging.info(f"Waiting {time_to_wait} seconds until next post at {scheduled_time}.")
+                logging.info(f"Waiting for {time_to_wait} seconds until next post at {scheduled_time}.")
                 time.sleep(time_to_wait)
             
             selected_topic = random.choice(niche_topics)
             tweet_text = generate_tweet(gemini_model, selected_topic)
+            
             if tweet_text:
-                post_tweet(oauth, sheet, tweet_text)
+                if not check_existing_tweet(sheet, tweet_text):
+                    post_tweet(oauth, tweet_text)
+                    save_tweet(sheet, tweet_text)
+                else:
+                    logging.info("Tweet already exists, generating a new one.")
             else:
                 logging.error("Failed to generate tweet.")
     else:
-        logging.error("Setup failed.")
+        logging.error("Twitter, Gemini API, or Google Sheets setup failed.")
 
 if __name__ == "__main__":
     main()
