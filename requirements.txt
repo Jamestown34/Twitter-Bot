@@ -4,6 +4,11 @@ gspread
 oauth2client
 requests-oauthlib
 requests
-
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+requests-oauthlib
+sentence-transformers
+torch
 
 
