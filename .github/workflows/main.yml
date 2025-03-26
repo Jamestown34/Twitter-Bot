@@ -17,6 +17,15 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+        # make sure requirements.txt includes:
+        # google-api-python-client
+        # google-auth-httplib2
+        # google-auth-oauthlib
+        # gspread
+        # requests-oauthlib
+        # google-generativeai
+        # sentence-transformers
+        # torch
 
       - name: Create Google Sheets Credentials File
         env:
