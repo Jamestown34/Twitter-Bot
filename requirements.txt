@@ -1,3 +1,7 @@
 tweepy
 google-generativeai
+gspread
+oauth2client
+requests-oauthlib
+
 
