@@ -39,14 +39,18 @@ def check_existing_tweet(sheet, tweet_text):
 
 def save_tweet(sheet, tweet_text):
     logging.info(f"Attempting to save tweet: {tweet_text}")
+    print("save_tweet function called")
     if sheet is not None:
+        print(f"sheet object is: {sheet}")
         try:
             sheet.append_row([tweet_text, str(datetime.datetime.now())])
             logging.info("Tweet saved to sheet.")
         except Exception as e:
             logging.error(f"Error saving tweet to sheet: {e}")
+            print(f"Error saving tweet to sheet: {e}")
     else:
         logging.error("Google sheet object is none, unable to save tweet.")
+        print("Google sheet object is none")
 
 # Twitter Setup
 def setup_twitter_oauth():
