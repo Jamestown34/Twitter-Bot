@@ -17,10 +17,21 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # Google Sheets Setup
 def setup_google_sheets():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("google_sheets_key.json", scope)
-    client = gspread.authorize(creds)
-    sheet = client.open_by_key("1l6N6oZjRM7NPE3fRgBR2IFcD0oXxEQ7oBEdd5KCsKi4").worksheet("History") # Corrected sheet name
-    return sheet
+    try:
+        credentials_json = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
+        if not credentials_json:
+            logging.error("GOOGLE_SHEETS_CREDENTIALS secret not found.")
+            return None
+
+        credentials_dict = json.loads(credentials_json)
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+        client = gspread.authorize(creds)
+        sheet = client.open_by_key("1l6N6oZjRM7NPE3fRgBR2IFcD0oXxEQ7oBEdd5KCsKi4").worksheet("History")
+        logging.info("Google Sheets setup successful.")
+        return sheet
+    except Exception as e:
+        logging.error(f"Error setting up Google Sheets: {e}")
+        return None
 
 def check_existing_tweet(sheet, tweet_text):
     existing_tweets = sheet.col_values(1)
