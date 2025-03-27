@@ -24,13 +24,37 @@ def setup_google_sheets():
             return None
 
         credentials_dict = json.loads(credentials_json)
+        print("Credentials Dictionary:", credentials_dict) # debug print
         creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+        print("Credentials Object Created") #debug print
         client = gspread.authorize(creds)
-        sheet = client.open_by_key("1l6N6oZjRM7NPE3fRgBR2IFcD0oXxEQ7oBEdd5KCsKi4").worksheet("History")
-        logging.info("Google Sheets setup successful.")
-        return sheet
+        print("gspread client authorized") #debug print
+        sheet_id = "1l6N6oZjRM7NPE3fRgBR2IFcD0oXxEQ7oBEdd5KCsKi4"
+        print(f"Sheet ID: {sheet_id}")
+        sheet_name = "History"
+        print(f"Sheet Name: {sheet_name}")
+
+        try:
+            sheet = client.open_by_key(sheet_id).worksheet(sheet_name)
+            print("Google Sheets connection successful!") #debug print
+            logging.info("Google Sheets setup successful.")
+            return sheet
+
+        except gspread.exceptions.WorksheetNotFound:
+            print(f"Worksheet '{sheet_name}' not found.")
+            return None
+
+        except gspread.exceptions.SpreadsheetNotFound:
+            print(f"Spreadsheet with id '{sheet_id}' not found.")
+            return None
+
+        except Exception as e:
+            print(f"Error opening sheet or worksheet: {e}")
+            return None
+
     except Exception as e:
         logging.error(f"Error setting up Google Sheets: {e}")
+        print(f"Google Sheets connection error: {e}") #debug print
         return None
 
 def check_existing_tweet(sheet, tweet_text):
@@ -133,12 +157,10 @@ def generate_tweet(gemini_model, topic):
 def post_tweet(oauth, tweet_text):
     if not oauth or not tweet_text:
         return
-
     payload = {"text": tweet_text}
 
     try:
         response = oauth.post("https://api.twitter.com/2/tweets", json=payload)
-
         if response.status_code != 201:
             logging.error(f"Twitter API error: {response.status_code} {response.text}")
             return
@@ -173,24 +195,4 @@ def main():
             scheduled_time = now + (time_interval * i)
             time_to_wait = (scheduled_time - datetime.datetime.now()).total_seconds()
             if time_to_wait > 0:
-                logging.info(f"Waiting for {time_to_wait} seconds until next post at {scheduled_time}.")
-                time.sleep(time_to_wait)
-
-            selected_topic = random.choice(niche_topics)
-            tweet_text = generate_tweet(gemini_model, selected_topic)
-
-            if tweet_text:
-                existing_tweets = sheet.col_values(1)
-                if not is_semantically_similar(tweet_text, existing_tweets):
-                    post_tweet(oauth, tweet_text)
-                    save_tweet(sheet, tweet_text)
-                    time.sleep(15)
-                else:
-                    logging.info("Semantically similar tweet already exists, generating a new one.")
-            else:
-                logging.error("Failed to generate tweet.")
-    else:
-        logging.error("Twitter, Gemini API, or Google Sheets setup failed.")
-
-if __name__ == "__main__":
-    main()
+                logging.info(f"Waiting for {time_to_wait} seconds until next post at {scheduled_time
