@@ -15,6 +15,12 @@ import torch
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Google Sheets Setup
+def setup_google_sheets(credentials_json, sheet_id, sheet_name):
+    print("Entering setup_google_sheets function") # Add this line
+    try:
+        # ... rest of your function code ...
+    except Exception as e:
+        # ... error handling ...
 def setup_google_sheets():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     try:
