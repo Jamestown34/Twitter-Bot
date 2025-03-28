@@ -26,6 +26,10 @@ jobs:
         # google-generativeai
         # sentence-transformers
         # torch
+        # schedule  # Add schedule to requirements.txt or install separately
+
+      - name: Install schedule
+        run: pip install schedule
 
       - name: Post Scheduled Tweets
         env:
