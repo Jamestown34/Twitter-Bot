@@ -1,7 +1,12 @@
 name: Twitter Bot Automation
+
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Runs every 6 hours
+    - cron: "0 */6 * * *"  # Runs every 6 hours
+  workflow_dispatch:  # Allows manual execution
+  push:
+    branches:
+      - main  # Runs when pushing to main
 
 jobs:
   post_tweets:
@@ -13,25 +18,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: "3.9"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
-        # make sure requirements.txt includes:
-        # google-api-python-client
-        # google-auth-httplib2
-        # google-auth-oauthlib
-        # gspread
-        # requests-oauthlib
-        # google-generativeai
-        # sentence-transformers
-        # torch
-        # schedule  # Add schedule to requirements.txt or install separately
+        run: |
+          pip install -r requirements.txt
+          pip install schedule  # Ensures 'schedule' is installed
 
-      - name: Install schedule
-        run: pip install schedule
-
-      - name: Post Scheduled Tweets
+      - name: Run Twitter Bot
         env:
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
