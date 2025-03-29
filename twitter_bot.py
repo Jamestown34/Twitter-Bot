@@ -21,7 +21,7 @@ def setup_google_sheets():
     try:
         credentials_json = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
         if not credentials_json:
-            logging.error("GOOGLE_SHEETS_CREDENTIALS secret not found.")
+            logging.error("❌ GOOGLE_SHEETS_CREDENTIALS secret not found.")
             return None
 
         credentials_dict = json.loads(credentials_json)
@@ -32,23 +32,23 @@ def setup_google_sheets():
 
         try:
             sheet = client.open_by_key(sheet_id).worksheet(sheet_name)
-            logging.info("Google Sheets setup successful.")
+            logging.info("✅ Google Sheets setup successful.")
             return sheet
 
         except gspread.exceptions.WorksheetNotFound:
-            logging.error(f"Worksheet '{sheet_name}' not found.")
+            logging.error(f"❌ Worksheet '{sheet_name}' not found.")
             return None
 
         except gspread.exceptions.SpreadsheetNotFound:
-            logging.error(f"Spreadsheet with id '{sheet_id}' not found.")
+            logging.error(f"❌ Spreadsheet with ID '{sheet_id}' not found.")
             return None
 
         except Exception as e:
-            logging.error(f"Error opening sheet or worksheet: {e}")
+            logging.error(f"❌ Error opening sheet or worksheet: {e}")
             return None
 
     except Exception as e:
-        logging.error(f"Error setting up Google Sheets: {e}")
+        logging.error(f"❌ Error setting up Google Sheets: {e}")
         return None
 
 # Twitter Setup
@@ -59,7 +59,7 @@ def setup_twitter_oauth():
     access_token_secret = os.environ.get("TWITTER_ACCESS_SECRET")
 
     if not all([consumer_key, consumer_secret, access_token, access_token_secret]):
-        logging.error("Missing Twitter API credentials.")
+        logging.error("❌ Missing Twitter API credentials.")
         return None
 
     return OAuth1Session(
@@ -76,10 +76,10 @@ def setup_gemini_api():
         model = genai.GenerativeModel('models/gemini-1.5-pro-latest')
         return model
     except KeyError as e:
-        logging.error(f"Missing Gemini API key: {e}")
+        logging.error(f"❌ Missing Gemini API key: {e}")
         return None
     except Exception as e:
-        logging.error(f"Gemini API configuration failed: {e}")
+        logging.error(f"❌ Gemini API configuration failed: {e}")
         return None
 
 # Semantic Similarity Check
@@ -110,69 +110,84 @@ def generate_tweet(gemini_model, topic):
     try:
         response = gemini_model.generate_content(selected_style)
         tweet_text = response.text
-        logging.info(f"Generated tweet: {tweet_text}")
+        logging.info(f"✅ Generated tweet: {tweet_text}")
         return tweet_text
     except Exception as e:
-        logging.error(f"Gemini API tweet generation failed: {e}")
+        logging.error(f"❌ Gemini API tweet generation failed: {e}")
         return None
 
 # Post Tweet
 def post_tweet(oauth, tweet_text):
     if not oauth or not tweet_text:
+        logging.error("❌ Cannot post tweet. Missing OAuth or tweet text.")
         return
-    payload = {"text": tweet_text}
 
+    payload = {"text": tweet_text}
     try:
         response = oauth.post("https://api.twitter.com/2/tweets", json=payload)
         if response.status_code != 201:
-            logging.error(f"Twitter API error: {response.status_code} {response.text}")
+            logging.error(f"❌ Twitter API error: {response.status_code} {response.text}")
             return
-        logging.info(f"Tweet posted: {tweet_text}")
+        logging.info(f"✅ Tweet posted: {tweet_text}")
     except Exception as e:
-        logging.error(f"Twitter API error: {e}")
+        logging.error(f"❌ Twitter API error: {e}")
+
+# Save Tweet to Google Sheets
+def save_tweet(sheet, tweet_text):
+    if not sheet:
+        logging.error("❌ Cannot save tweet. Google Sheet not found.")
+        return
+    try:
+        sheet.append_row([tweet_text, datetime.datetime.now().isoformat()])
+        logging.info("✅ Tweet saved to Google Sheets.")
+    except Exception as e:
+        logging.error(f"❌ Error saving tweet to Google Sheets: {e}")
 
 # Scheduled Tweet Posting
 def post_scheduled_tweet():
-    niche_topics = [
-        "AI Ethics and Bias",
-        "Data Visualization Best Practices",
-        "SQL Tips for Data Analysts",
-        "Machine Learning Model Optimization",
-        "Big Data Trends",
-        "Cloud Computing for AI",
-        "Data Security and Privacy",
-        "Real-world Applications of AI",
-        "Prompt Engineering",
-        "Feature Engineering in ML",
-        "Python Libraries for Data Science"
-    ]
-
-    # Setup APIs
+    logging.info("🔹 Setting up APIs...")
     oauth = setup_twitter_oauth()
     gemini_model = setup_gemini_api()
     sheet = setup_google_sheets()
 
-    if oauth and gemini_model and sheet:
-        topic = random.choice(niche_topics)
-        tweet_text = generate_tweet(gemini_model, topic)
+    if not oauth:
+        logging.error("❌ Twitter OAuth failed.")
+        return
+    if not gemini_model:
+        logging.error("❌ Gemini AI setup failed.")
+        return
+    if not sheet:
+        logging.error("❌ Google Sheets setup failed.")
+        return
 
-        if tweet_text:
-            existing_tweets = sheet.col_values(1)
-            if is_semantically_similar(tweet_text, existing_tweets):
-                logging.info("Tweet is too similar to previous tweets. Skipping...")
-            else:
-                post_tweet(oauth, tweet_text)
-                save_tweet(sheet, tweet_text)
+    logging.info("✅ All API setups successful.")
+    
+    topic = random.choice([
+        "AI Ethics and Bias",
+        "Data Visualization Best Practices",
+        "SQL Tips for Data Analysts",
+        "Machine Learning Model Optimization",
+        "Big Data Trends"
+    ])
+    
+    logging.info(f"🔹 Generating tweet for topic: {topic}")
+    tweet_text = generate_tweet(gemini_model, topic)
 
-# Schedule Tweets Every 6 Hours (4 tweets per day)
-schedule.every().day.at("06:00").do(post_scheduled_tweet)
-schedule.every().day.at("12:00").do(post_scheduled_tweet)
-schedule.every().day.at("18:00").do(post_scheduled_tweet)
-schedule.every().day.at("00:00").do(post_scheduled_tweet)
+    if not tweet_text:
+        logging.error("❌ Tweet generation failed.")
+        return
+    
+    existing_tweets = sheet.col_values(1)
+    if is_semantically_similar(tweet_text, existing_tweets):
+        logging.warning("⚠ Tweet is too similar to previous tweets. Skipping...")
+        return
 
-# Run Scheduler
+    logging.info("🔹 Posting tweet now...")
+    post_tweet(oauth, tweet_text)
+    save_tweet(sheet, tweet_text)
+    logging.info("✅ Tweet successfully posted and saved!")
+
+# Run Script Once in GitHub Actions
 if __name__ == "__main__":
-    logging.info("Tweet scheduling started.")
-    while True:
-        schedule.run_pending()
-        time.sleep(60)  # Check every minute
+    logging.info("🚀 Running Twitter bot now...")
+    post_scheduled_tweet()
