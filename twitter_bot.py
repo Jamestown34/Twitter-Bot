@@ -102,7 +102,27 @@ def generate_tweet(gemini_model, topic):
         "Write a thought-provoking question about {topic} to spark discussion.",
         "Post a quick tip or hack related to {topic}.",
         "Create a short and witty take on {topic}.",
-        "Write a motivational quote related to {topic}."
+        "Write a motivational quote related to {topic}.",
+        "Provide a little-known historical fact about {topic}.",
+        "Break down a complex concept related to {topic} in simple terms.",
+        "Write a bold statement about {topic} that encourages debate.",
+        "Summarize a recent trend or breakthrough in {topic}.",
+        "Pose a 'Would You Rather' question related to {topic}.",
+        "Share a common myth about {topic} and debunk it.",
+        "Recommend a must-read book, article, or resource on {topic}.",
+        "Give a fun analogy to explain {topic} in a creative way.",
+        "Ask followers to describe {topic} in one word.",
+        "Share an inspirational success story related to {topic}.",
+        "Create a 'Did You Know?' style fact about {topic}.",
+        "Make a bold prediction about the future of {topic}.",
+        "Write a short case study or real-world example of {topic} in action.",
+        "Share a 'How It Started vs. How It’s Going' related to {topic}.",
+        "Give a simple step-by-step guide for beginners on {topic}.",
+        "Write a tweet in the style of a famous person talking about {topic}.",
+        "Pose a hypothetical scenario about {topic} to spark creativity.",
+        "Turn {topic} into a fun challenge for your audience.",
+        "Start a poll related to {topic} to engage followers.",
+        "Ask followers to share their biggest struggle with {topic}."
     ]
 
     selected_style = random.choice(tweet_styles).format(topic=topic)
@@ -167,7 +187,13 @@ def post_scheduled_tweet():
         "Data Visualization Best Practices",
         "SQL Tips for Data Analysts",
         "Machine Learning Model Optimization",
-        "Big Data Trends"
+        "Big Data Trends",
+         "Cloud Computing for AI",
+        "Data Security and Privacy",
+        "Real-world Applications of AI",
+        "Prompt Engineering",
+        "Feature Engineering in ML",
+        "Python Libraries for Data Science"
     ])
     
     logging.info(f"🔹 Generating tweet for topic: {topic}")
